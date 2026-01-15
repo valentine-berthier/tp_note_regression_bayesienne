@@ -1,0 +1,26 @@
+# library(rstanarm)
+install.packages("threejs")
+library(threejs)
+install.packages("nloptr")
+library(nloptr)
+install.packages("minqa")
+library(minqa)
+install.packages("shinythemes")
+library(shinythemes)
+install.packages("colourpicker")
+library(colourpicker)
+#install.packages("rstanarm") 
+install.packages('Rdpack')
+library('Rdpack')
+install.packages("DT")
+library(DT)
+library(dygraphs)
+#library(rstanarm)
+install.packages("rstanarm", dependencies = TRUE)
+library(rstanarm)
+exists("stan_glm")
+fit <- stan_glm(y ~ glucose + mass + age,
+                data=train, family=binomial("logit"),
+                prior = normal(0, 2.5),
+                chains=2, iter=200, refresh=0)
+
