@@ -154,7 +154,7 @@ ggplot(coeff, aes(x = "", y = y)) +
 
 
 # Partie 2 ----
-
+ 
 ## 2.1 Question ----  
 library(MCMCpack) 
 library(LearnBayes)

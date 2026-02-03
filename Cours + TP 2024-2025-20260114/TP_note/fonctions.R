@@ -1,3 +1,10 @@
+library(MCMCpack)
+library(LearnBayes)
+library(mvtnorm)
+library(mnormt)
+
+
+
 # BayesA ----
 
 
@@ -5,6 +12,7 @@ BayesA <- function(y,X,a,b,c,d,muinit,nbiter,nburn)
 {
   p <- dim(X)[2]
   n <- dim(X)[1]
+  
   # resultats a garder
   resbeta <- matrix(rep(0,p*(nbiter-nburn)),nrow=p,ncol=(nbiter-nburn))
   ressigma2beta <- matrix(rep(0,p*(nbiter-nburn)),nrow=p,ncol=(nbiter-nburn))
@@ -40,10 +48,15 @@ BayesA <- function(y,X,a,b,c,d,muinit,nbiter,nburn)
 
 
 # Fonction de prédiction ----
-predictions <- function(X_test, mu_hat, beta_hat) {
-  y_pred <- mu_hat + X_test %*% beta_hat
-  return(as.vector(y_pred))
+
+predictions <- function(X_test,mu_hat,beta_hat){
+  y_pred <- mu_hat*as.vector(rep(1,dim(X_test)[1]))+ as.matrix(X_test[,]) %*% beta_hat
+  return(y_pred)
 }
+
+
+
+
 
 
 # Fonction de sélection basée sur boxplot ----
@@ -57,4 +70,106 @@ subsetSelected <- function(coefs, seuil_bas, seuil_haut) {
   ))
 }
 
+
+
+# ABC ----
+
+
+# Prior sur mu
+simMU <- function() {
+  runif(1, -10, 10)
+}
+
+# Prior sur sigma (écart-type, >0)
+simSIGMA <- function() {
+  runif(1, 0.01, 10)
+}
+
+# Simulateur du modèle
+simul <- function(n, mu, sigma) {
+  rnorm(n, mean = mu, sd = sigma)
+}
+
+MeanVar <- function(obs, simu) {
+  c(
+    abs(mean(obs) - mean(simu)),
+    abs(sd(obs)   - sd(simu))
+  )
+}
+
+
+acceptMeanVar <- function(obs, simu, seuil) {
+  d <- MeanVar(obs, simu)
+  as.integer(d[1] < seuil[1] & d[2] < seuil[2])
+}
+
+
+ABC_MeanVar <- function(obs, nIter, seuil) {
+  
+  n <- length(obs)
+  
+  decision     <- integer(nIter)
+  sampledMU    <- numeric(nIter)
+  sampledSIGMA <- numeric(nIter)
+  
+  for (i in 1:nIter) {
+    mu    <- simMU()
+    sigma <- simSIGMA()
+    
+    simuDATA <- simul(n, mu, sigma)
+    
+    decision[i] <- acceptMeanVar(obs, simuDATA, seuil)
+    sampledMU[i] <- mu
+    sampledSIGMA[i] <- sigma
+  }
+  
+  data.frame(
+    decision = decision,
+    mu = sampledMU,
+    sigma = sampledSIGMA
+  )
+}
+
+
+
+quant_stat <- function(x) {
+  quantile(x, probs = c(0.1, 0.5, 0.9))
+}
+
+comparequant <- function(q1, q2) {
+  sqrt(sum((q1 - q2)^2))
+}
+
+acceptQuant <- function(obs, simu, seuil) {
+  d <- comparequant(quant_stat(obs), quant_stat(simu))
+  as.integer(d < seuil)
+}
+
+
+
+ABC_Quant <- function(obs, nIter, seuil) {
+  
+  n <- length(obs)
+  
+  decision     <- integer(nIter)
+  sampledMU    <- numeric(nIter)
+  sampledSIGMA <- numeric(nIter)
+  
+  for (i in 1:nIter) {
+    mu <- simMU()
+    sigma <- simSIGMA()
+    
+    simuDATA <- simul(n, mu, sigma)
+    
+    decision[i] <- acceptQuant(obs, simuDATA, seuil)
+    sampledMU[i] <- mu
+    sampledSIGMA[i] <- sigma
+  }
+  
+  data.frame(
+    decision = decision,
+    mu = sampledMU,
+    sigma = sampledSIGMA
+  )
+}
 
