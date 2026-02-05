@@ -97,7 +97,7 @@ MeanVar <- function(obs, simu) {
   )
 }
 
-
+# critère d'acceptation 
 acceptMeanVar <- function(obs, simu, seuil) {
   d <- MeanVar(obs, simu)
   as.integer(d[1] < seuil[1] & d[2] < seuil[2])
