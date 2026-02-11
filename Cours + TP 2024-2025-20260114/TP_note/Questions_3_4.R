@@ -90,11 +90,11 @@ LASSO_BLR$lambda # = moyenne des trajectoires = estimation de la moyenne a poste
 mean_tau2 <- mean(LASSO_BLR$tau2)
 mean_tau2
 
-#Graphiques
-png("3_3_coefficients_LASSO.png", width=800, height=600)
+
+png("3_3_importance_beta.png", width=1000, height=600)
+
 beta <- as.vector(LASSO_BLR$bL)
 names(beta) <- colnames(X_train)
-
 beta_sorted <- sort(abs(beta), decreasing = TRUE)
 
 barplot(beta_sorted[1:20],
@@ -103,9 +103,6 @@ barplot(beta_sorted[1:20],
 
 dev.off()
 
-png("3_3_coefficients_tries.png", width=800, height=600)
-plot(sort(abs(LASSO_BLR$bL)), main="|beta_j| triés")
-dev.off()
 
 
 # remarque : il serait int?ressant de faire varier le shape et le rate de la loi (a priori) gamma du 
@@ -169,8 +166,6 @@ dev.off()
 
 
 
-
-
 ## Question 3.5
 
 #####################Pr?diction 
@@ -181,7 +176,6 @@ png("3_5_prediction_test.png", width=800, height=600)
 plot(predLASSOBLR ~ y_test, main="Prédictions vs Observations (test)")
 abline(0,1, lwd=2)
 dev.off()
-
 
 
 
@@ -218,13 +212,18 @@ legend("topright",
 
 dev.off()
 
+sort(abs(LASSO_BLR$bL), decreasing = TRUE)[1:5]
+
+beta <- as.vector(LASSO_BLR$bL)
+names(beta) <- colnames(X_train)
+
+beta[order(abs(beta), decreasing = TRUE)][1:5]
+
 # Pour s?lectionner moins de variable il faudrait un srinkage plus fort, 
 # ce qui correspond ? un param?tre lambda du LASSO plus ?lev?
 # Ici lambda^2 suit une Gamma(e,f) avdc (e,f) = (1,0.1)
 # E(lambda^2)=e/f  et V(lamdba^2) = e^2/f
 # Prenons e + grand (=10) 
-
-
 
 
 
@@ -328,20 +327,30 @@ resSSVS[[1]]
 
 # représentation
 
-png("4_2_SSVS_histogramme.png", width=800, height=600)
-plot(sort(abs(resSSVS[[1]])), main="Fréquence de sélection (triée)")
-dev.off()
+# Seuil de sélection (comme tu faisais : > 400)
+seuil <- 400
+selec <- resSSVS[[1]] > seuil
 
-png("4_2_SSVS_boxplot.png", width=800, height=600)
-boxplot(resSSVS[[1]], main="Boxplot fréquences sélection SSVS")
-dev.off()
+cols <- ifelse(selec, "blue", "black")
 
-png("4_2_SSVS_par_variable.png", width=800, height=600)
+png("4_2_SSVS_par_variable.png", width=900, height=600)
+
 plot(resSSVS[[1]],
-     xlab="Indice variable",
-     ylab="Nombre de sélections post-burn-in",
-     main="SSVS : fréquence de sélection par variable")
+     col = cols,
+     pch = 16,
+     xlab = "Indice variable",
+     ylab = "Nombre de sélections post-burn-in",
+     main = "SSVS : fréquence de sélection par variable")
+
+legend("topright",
+       legend = c("Variable sélectionnée", "Variable non sélectionnée"),
+       col = c("blue", "black"),
+       pch = 16)
+
 dev.off()
+
+
+which(resSSVS[[1]] > 400)
 
 
 ### Question 4.3
@@ -386,6 +395,9 @@ plot(1:length(selec), selec*1, col=cols, pch=16, ylim=c(0,1),
 legend("topright", legend=c("Sélectionnée","Non sélectionnée"), col=c("blue","black"), pch=16)
 
 dev.off()
+
+names(X_train)[resSSVS[[1]] > 400]
+
 
 
 # 10  20  30  40  50  90 133 147
