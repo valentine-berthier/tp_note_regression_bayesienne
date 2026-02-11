@@ -894,3 +894,76 @@ mean(sigma_post)
 
 
 
+
+
+
+
+
+
+
+
+
+###### Question 5.5
+
+# IC RR-BLUP
+
+library(MASS)
+XtX_inv <- ginv(t(X_train) %*% X_train)
+var_beta_RR <- sigma2_e_RR * XtX_inv
+se_beta_RR <- sqrt(diag(var_beta_RR))
+
+IC_RR_low  <- beta_RR - 1.96 * se_beta_RR
+IC_RR_high <- beta_RR + 1.96 * se_beta_RR
+
+
+# IC Bayes A
+
+IC_BA_low  <- apply(resbeta_BA, 1, quantile, 0.025)
+IC_BA_high <- apply(resbeta_BA, 1, quantile, 0.975)
+
+# Moyenne LASSO bayésien
+
+beta_LASSO <- as.vector(LASSO_BLR$bL)
+
+# Fréquence de sélection SSVS
+
+freq_SSVS <- resSSVS[[1]] / (3000 - 2000)  # fréquence post burn-in
+
+# Graphique de comparaisons
+
+png("5_5_comparaison_IC.png", width=1200, height=700)
+
+par(mfrow=c(1,1))
+
+plot(beta_RR,
+     ylim=range(c(IC_RR_low, IC_RR_high, IC_BA_low, IC_BA_high)),
+     pch=16, col="black",
+     xlab="Indice variable",
+     ylab="Valeur coefficient",
+     main="Comparaison des estimations et IC")
+
+# IC RR-BLUP
+arrows(1:length(beta_RR), IC_RR_low,
+       1:length(beta_RR), IC_RR_high,
+       angle=90, code=3, length=0.02, col="black")
+
+# IC Bayes A
+arrows(1:length(beta_RR), IC_BA_low,
+       1:length(beta_RR), IC_BA_high,
+       angle=90, code=3, length=0.02, col="red")
+
+# Moyenne LASSO
+points(beta_LASSO, col="blue", pch=16)
+
+# Fréquence SSVS (échelle différente → axe droit)
+par(new=TRUE)
+plot(freq_SSVS, type="h", axes=FALSE, xlab="", ylab="", col="green")
+axis(side=4)
+mtext("Fréquence sélection SSVS", side=4, line=3)
+
+legend("topright",
+       legend=c("RR-BLUP IC", "Bayes A IC", "LASSO moyenne", "SSVS fréquence"),
+       col=c("black","red","blue","green"),
+       pch=c(16,16,16,15))
+
+dev.off()

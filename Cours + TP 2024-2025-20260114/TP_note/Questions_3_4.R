@@ -425,3 +425,140 @@ lines(resSSVS_Pi2[[1]], lty=2, lwd=2)
 legend("topright", c("Pi initial","Pi augmenté"), lty=c(1,2), lwd=2)
 dev.off()
 
+
+
+
+
+# Question 5.6 : LASSO non bayésien
+
+library(glmnet)
+library(ggplot2)
+
+# Préparer les matrices
+X_train_mat <- as.matrix(X_train)
+X_test_mat  <- as.matrix(X_test)
+
+# Ajuster un LASSO avec validation croisée
+cv_lasso <- cv.glmnet(
+  x = X_train_mat,
+  y = y_train,
+  alpha = 1,          # LASSO
+  nfolds = 5          # validation croisée 5-fold
+)
+
+# Lambda optimal
+lambda_opt <- cv_lasso$lambda.min
+cat("Lambda optimal (LASSO) =", lambda_opt, "\n")
+
+# Coefficients LASSO
+lasso_coef <- coef(cv_lasso, s = "lambda.min")
+
+# Variables sélectionnées (non nulles)
+selected_vars <- rownames(lasso_coef)[which(lasso_coef != 0)]
+selected_vars <- selected_vars[selected_vars != "(Intercept)"]  # exclure intercept
+cat("Variables sélectionnées par LASSO :", length(selected_vars), "\n")
+print(selected_vars)
+
+# Prédiction sur l'échantillon de test
+y_pred_lasso <- predict(cv_lasso, newx = X_test_mat, s = "lambda.min")
+cor_test <- cor(y_test, y_pred_lasso)
+cat("Corrélation prédiction/observations (test) =", round(cor_test, 3), "\n")
+
+# Visualisation des coefficients
+coef_df <- data.frame(
+  variable = rownames(lasso_coef)[-1],  # exclut intercept
+  coefficient = as.vector(lasso_coef[-1])
+)
+
+# Tracé des coefficients
+coef_nonzero <- coef_df[coef_df$coefficient != 0, ]
+png("5_6_coefficients_nonzero.png", width=1000, height=600)
+library(ggplot2)
+
+ggplot(coef_nonzero, aes(x = reorder(variable, abs(coefficient)), y = coefficient)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Coefficients LASSO (variables non nulles)",
+    x = "Variables",
+    y = "Coefficient"
+  ) +
+  theme_minimal()
+
+dev.off()
+
+
+
+# Visualisation prédictions
+png("5_6_prediction_test.png", width=800, height=600)
+plot(y_test, y_pred_lasso,
+     main = paste("Prédictions vs Observations (LASSO)\nCorrélation =", round(cor_test, 2)),
+     xlab = "Y observé", ylab = "Y prédit",
+     pch = 16, col = "blue")
+abline(0, 1, col = "red", lwd = 2)
+dev.off()
+
+#10 variables avec les coeffs les plus élevés
+
+coef_values <- as.vector(lasso_coef[-1])
+var_names   <- rownames(lasso_coef)[-1]
+
+coef_df <- data.frame(
+  variable = var_names,
+  coefficient = coef_values,
+  abs_coef = abs(coef_values)
+)
+
+top10_vars <- coef_df[order(-coef_df$abs_coef), ][1:10, ]
+print(top10_vars[, c("variable", "coefficient")])
+
+
+
+# 5.8 Modèle de régression standard avec variables sélectionnées
+
+selected_vars <- c("Sport.10", "Music.13", "Sport.15", "Serie.8", "Sport.11", "Film.8", "sexe")
+
+formula_std <- as.formula(paste("Y ~", paste(selected_vars, collapse = " + ")))
+model_std <- lm(formula_std, data = data)
+
+summary(model_std)
+
+coef_df <- as.data.frame(coef(summary(model_std)))
+coef_df$Variable <- rownames(coef_df)
+rownames(coef_df) <- NULL
+coef_df <- coef_df[-1, ]
+names(coef_df) <- c("Estimate", "StdError", "tValue", "pValue", "Variable")
+
+# Graphique des coefficients avec intervalles de confiance
+library(ggplot2)
+png("5_8_model_standard.png", width=800, height=600)
+ggplot(coef_df, aes(x=reorder(Variable, Estimate), y=Estimate)) +
+  geom_point(color="darkred", size=3) +
+  geom_errorbar(aes(ymin=Estimate - 1.96*StdError, ymax=Estimate + 1.96*StdError), width=0.2) +
+  coord_flip() +
+  labs(title="Modèle de régression standard : coefficients ± IC",
+       y="Estimate", x="Variables") +
+  theme_minimal()
+dev.off()
+
+
+# 5.9 Analyse du modèle standard
+
+#Résidus
+png("5_9_residus.png", width=800, height=600)
+par(mfrow=c(2,2))  # 4 plots classiques de diagnostic
+plot(model_std)
+dev.off()
+
+# p-valeurs
+png("5_9_pvalues.png", width=800, height=600)
+ggplot(coef_df, aes(x=reorder(Variable, Estimate), y=pValue)) +
+  geom_bar(stat="identity", fill="steelblue") +
+  coord_flip() +
+  labs(title="P-values des coefficients",
+       y="P-value", x="Variables") +
+  theme_minimal()
+dev.off()
+
+summary(model_std)
+
